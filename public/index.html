@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Instagram-style Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Register/Login Section -->
+  <div id="authSection">
+    <h2>Register</h2>
+    <input id="regUser" placeholder="Username">
+    <input id="regPass" type="password" placeholder="Password">
+    <button onclick="register()">Register</button>
+
+    <h2>Login</h2>
+    <input id="loginUser" placeholder="Username">
+    <input id="loginPass" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+  </div>
+
+  <!-- Chat Section (hidden until login) -->
+  <div id="chatSection" style="display:none;">
+    <h2>Start Chat</h2>
+    <input id="target" placeholder="Target User ID">
+    <button onclick="setTarget()">Enter Discussion</button>
+
+    <h2>Chat</h2>
+    <ul id="chat"></ul>
+    <input id="msg" placeholder="Type message...">
+    <button onclick="sendMsg()">Send</button>
+
+    <h3>Send File</h3>
+    <input type="file" id="fileInput">
+    <button onclick="uploadFile()">Upload File</button>
+
+    <h3>Record Audio</h3>
+    <button onclick="startRecording()">Start Recording</button>
+    <button onclick="stopRecording()">Stop Recording</button>
+
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>

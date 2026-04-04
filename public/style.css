@@ -1,0 +1,11 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+}
+#chat {
+  list-style: none;
+  padding: 0;
+}
+#chat li {
+  margin: 5px 0;
+}
