@@ -6,6 +6,8 @@
   --accent:#5563DE;
   --accent-2:#74ABE2;
   --text:#ffffff;
+  --anim-duration: 600ms;            /* change to 800ms or 1s to slow more */
+  --anim-ease: cubic-bezier(.22,.9,.35,1);
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -170,11 +172,40 @@ button:hover{background:var(--accent-2)}
 /* Hidden state */
 .hidden{display:none}
 
-/* Animation classes for single-screen transitions */
-.screen-enter { opacity: 0; transform: translateY(12px) scale(.995); }
-.screen-enter-active { opacity: 1; transform: translateY(0) scale(1); transition: opacity 260ms ease, transform 260ms cubic-bezier(.2,.9,.2,1); }
-.screen-exit { opacity: 1; transform: translateY(0) scale(1); }
-.screen-exit-active { opacity: 0; transform: translateY(-12px) scale(.995); transition: opacity 220ms ease, transform 220ms cubic-bezier(.2,.9,.2,1); }
+/* Animation classes for single-screen transitions (GPU friendly) */
+.screen-enter {
+  display: block;
+  opacity: 0;
+  transform: translateY(12px) scale(.995);
+  will-change: transform, opacity;
+}
+
+.screen-enter-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: opacity var(--anim-duration) var(--anim-ease),
+              transform var(--anim-duration) var(--anim-ease);
+}
+
+.screen-exit {
+  display: block;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  will-change: transform, opacity;
+}
+
+.screen-exit-active {
+  opacity: 0;
+  transform: translateY(-12px) scale(.995);
+  transition: opacity calc(var(--anim-duration) * 0.9) var(--anim-ease),
+              transform calc(var(--anim-duration) * 0.9) var(--anim-ease);
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  :root { --anim-duration: 0ms; }
+  .screen-enter-active, .screen-exit-active { transition: none !important; }
+}
 
 /* Responsive: two-column layout on wide screens but still centered single-screen behavior */
 @media(min-width:900px){
