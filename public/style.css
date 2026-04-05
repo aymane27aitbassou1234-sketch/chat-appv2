@@ -1,11 +1,186 @@
-body {
-  font-family: Arial, sans-serif;
-  margin: 20px;
+:root{
+  --bg1:#1f1c2c;
+  --bg2:#928dab;
+  --card:#2c2c3c;
+  --muted:#3c3c4c;
+  --accent:#5563DE;
+  --accent-2:#74ABE2;
+  --text:#ffffff;
 }
-#chat {
-  list-style: none;
-  padding: 0;
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font-family:Inter, "Segoe UI", system-ui, Arial, sans-serif;
+  background:linear-gradient(135deg,var(--bg1),var(--bg2));
+  color:var(--text);
 }
-#chat li {
-  margin: 5px 0;
+
+/* Full-screen wrapper centers everything */
+.page-center{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+
+/* App container */
+.app{
+  width:100%;
+  max-width:980px;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:18px;
+  justify-items:center;
+  align-items:center;
+}
+
+/* Card base */
+.card{
+  background:var(--card);
+  border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.35);
+  padding:18px;
+  width:100%;
+  max-width:720px;
+}
+
+/* Auth card narrower and centered */
+.auth-card{
+  max-width:420px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+}
+.auth-card .form{width:100%;max-width:360px}
+
+/* Chat card */
+.chat-card{max-width:720px}
+
+/* Inputs & buttons */
+h1{margin:0 0 12px 0;font-size:20px}
+.form{margin-bottom:12px}
+input{
+  width:100%;
+  padding:10px;
+  border-radius:8px;
+  border:0;
+  background:var(--muted);
+  color:var(--text);
+  margin-bottom:8px;
+  outline:none;
+}
+button{
+  background:var(--accent);
+  color:#fff;
+  border:0;
+  padding:10px 12px;
+  border-radius:8px;
+  cursor:pointer;
+}
+button:hover{background:var(--accent-2)}
+.btn-ghost{
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.08);
+  padding:8px 10px;
+}
+
+/* Chat layout */
+.chat-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+  gap:12px;
+}
+.small{font-size:12px;color:rgba(255,255,255,0.75)}
+.controls{
+  display:flex;
+  gap:8px;
+  margin-bottom:12px;
+  width:100%;
+}
+.controls input{
+  flex:1;
+  padding:10px;
+  border-radius:8px;
+  border:0;
+  background:var(--muted);
+  color:var(--text);
+}
+.controls button{white-space:nowrap}
+
+/* Messages area */
+.messages{
+  list-style:none;
+  padding:12px;
+  margin:0;
+  border-radius:8px;
+  background:var(--muted);
+  height:360px;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.messages li{
+  margin:8px 0;
+  padding:10px;
+  border-radius:10px;
+  max-width:80%;
+  word-break:break-word;
+}
+.messages li.self{margin-left:auto;background:var(--accent)}
+.messages li.other{margin-right:auto;background:#444}
+
+/* Composer & uploads */
+.composer{
+  display:flex;
+  gap:8px;
+  margin-top:12px;
+  align-items:center;
+}
+.composer input{
+  flex:1;
+  padding:10px;
+  border-radius:8px;
+  border:0;
+  background:var(--muted);
+  color:var(--text);
+}
+.uploads{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:12px;
+  margin-top:12px;
+  width:100%;
+}
+.upload-block{
+  background:rgba(255,255,255,0.02);
+  padding:10px;
+  border-radius:8px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.preview img{max-width:100%;border-radius:8px;margin-top:8px}
+.voice-controls{display:flex;gap:8px}
+
+/* Hidden state */
+.hidden{display:none}
+
+/* Animation classes for single-screen transitions */
+.screen-enter { opacity: 0; transform: translateY(12px) scale(.995); }
+.screen-enter-active { opacity: 1; transform: translateY(0) scale(1); transition: opacity 260ms ease, transform 260ms cubic-bezier(.2,.9,.2,1); }
+.screen-exit { opacity: 1; transform: translateY(0) scale(1); }
+.screen-exit-active { opacity: 0; transform: translateY(-12px) scale(.995); transition: opacity 220ms ease, transform 220ms cubic-bezier(.2,.9,.2,1); }
+
+/* Responsive: two-column layout on wide screens but still centered single-screen behavior */
+@media(min-width:900px){
+  .app{grid-template-columns:420px 1fr;align-items:start;justify-items:center}
+  .auth-card{grid-column:1}
+  .chat-card{grid-column:2}
+  .messages{align-items:flex-start}
+  .messages li{max-width:70%}
 }

@@ -1,43 +1,78 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Instagram-style Chat</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <title>Chat App</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Register/Login Section -->
-  <div id="authSection">
-    <h2>Register</h2>
-    <input id="regUser" placeholder="Username">
-    <input id="regPass" type="password" placeholder="Password">
-    <button onclick="register()">Register</button>
+  <div class="page-center">
+    <main class="app">
+      <section id="authSection" class="card auth-card">
+        <h1>Chat App</h1>
 
-    <h2>Login</h2>
-    <input id="loginUser" placeholder="Username">
-    <input id="loginPass" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-  </div>
+        <div class="form">
+          <label>Register</label>
+          <input id="regUser" placeholder="Username" />
+          <input id="regPass" type="password" placeholder="Password" />
+          <button id="btnRegister" onclick="register()">Register</button>
+        </div>
 
-  <!-- Chat Section (hidden until login) -->
-  <div id="chatSection" style="display:none;">
-    <h2>Start Chat</h2>
-    <input id="target" placeholder="Target User ID">
-    <button onclick="setTarget()">Enter Discussion</button>
+        <div class="form">
+          <label>Login</label>
+          <input id="loginUser" placeholder="Username" />
+          <input id="loginPass" type="password" placeholder="Password" />
+          <button id="btnLogin" onclick="login()">Login</button>
+        </div>
+      </section>
 
-    <h2>Chat</h2>
-    <ul id="chat"></ul>
-    <input id="msg" placeholder="Type message...">
-    <button onclick="sendMsg()">Send</button>
+      <section id="chatSection" class="card chat-card hidden" aria-hidden="true">
+        <header class="chat-header">
+          <div>
+            <strong id="meLabel"></strong>
+            <div class="small">Private chat by target ID</div>
+          </div>
+          <button onclick="logout()" class="btn-ghost">Logout</button>
+        </header>
 
-    <h3>Send File</h3>
-    <input type="file" id="fileInput">
-    <button onclick="uploadFile()">Upload File</button>
+        <div class="controls">
+          <input id="targetUser" placeholder="Target ID (username)" />
+          <button onclick="setTarget()">Set Target</button>
+        </div>
 
-    <h3>Record Audio</h3>
-    <button onclick="startRecording()">Start Recording</button>
-    <button onclick="stopRecording()">Stop Recording</button>
+        <ul id="messages" class="messages" role="log" aria-live="polite"></ul>
 
-    <button onclick="logout()">Logout</button>
+        <div class="composer">
+          <input id="msgInput" placeholder="Type a message..." />
+          <button onclick="sendMsg()">Send</button>
+        </div>
+
+        <div class="uploads">
+          <div class="upload-block">
+            <label>Photo</label>
+            <input id="photoInput" type="file" accept="image/*" style="display:none" />
+            <button onclick="choosePhoto()">Choose Photo</button>
+            <div id="photoPreview" class="preview"></div>
+            <button onclick="uploadPhoto()">Upload Photo</button>
+          </div>
+
+          <div class="upload-block">
+            <label>File</label>
+            <input id="fileInput" type="file" />
+            <button onclick="uploadFile()">Upload File</button>
+          </div>
+
+          <div class="upload-block">
+            <label>Voice</label>
+            <div class="voice-controls">
+              <button onclick="startRec()">Start</button>
+              <button onclick="stopRec()">Stop</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
