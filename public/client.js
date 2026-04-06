@@ -325,7 +325,7 @@ async function register(){
   $("meLabel").textContent = currentUser;
   socket.emit("login", currentUser);
   // show THE AKAN popup
-  showBigPopup('THE AKAN');
+  showBigPopup('THE AKAN.v3');
   animateShow("chat");
   loadRecentMessages();
 }
@@ -345,7 +345,7 @@ async function login(){
   $("meLabel").textContent = currentUser;
   socket.emit("login", currentUser);
   // show THE AKAN popup
-  showBigPopup('THE AKAN');
+  showBigPopup('THE AKAN.v3');
   animateShow("chat");
   loadRecentMessages();
 }
