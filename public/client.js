@@ -1,3 +1,9 @@
+/* public/client.js — updated with popup + animation helpers */
+
+/* --- Config / timing --- */
+const ANIM_DURATION_MS = 700;   // match CSS --anim-duration (700ms)
+const POPUP_DURATION_MS = 1600; // match CSS --popup-duration (1600ms)
+
 const socket = io();
 let currentUser = null;
 let targetUser = null;
@@ -8,10 +14,10 @@ const TARGET_KEY = "chat_target";
 
 /* small helpers */
 const $ = id => document.getElementById(id);
-function addClass(el, c){ el.classList.add(c); }
-function removeClass(el, c){ el.classList.remove(c); }
+function addClass(el, c){ if(el) el.classList.add(c); }
+function removeClass(el, c){ if(el) el.classList.remove(c); }
 
-/* animated show/hide for single-screen flow */
+/* animated show/hide for single-screen flow (uses ANIM_DURATION_MS) */
 function animateShow(target){
   const auth = $("authSection");
   const chat = $("chatSection");
@@ -26,16 +32,24 @@ function animateShow(target){
       removeClass(hideEl, "screen-exit");
       removeClass(hideEl, "screen-exit-active");
       hideEl.classList.add("hidden");
+
       showEl.classList.remove("hidden");
       addClass(showEl, "screen-enter");
       requestAnimationFrame(()=> addClass(showEl, "screen-enter-active"));
-      setTimeout(()=>{ removeClass(showEl, "screen-enter"); removeClass(showEl, "screen-enter-active"); }, 300);
-    }, 240);
+
+      setTimeout(()=>{
+        removeClass(showEl, "screen-enter");
+        removeClass(showEl, "screen-enter-active");
+      }, ANIM_DURATION_MS);
+    }, ANIM_DURATION_MS);
   } else {
     showEl.classList.remove("hidden");
     addClass(showEl, "screen-enter");
     requestAnimationFrame(()=> addClass(showEl, "screen-enter-active"));
-    setTimeout(()=>{ removeClass(showEl, "screen-enter"); removeClass(showEl, "screen-enter-active"); }, 300);
+    setTimeout(()=>{
+      removeClass(showEl, "screen-enter");
+      removeClass(showEl, "screen-enter-active");
+    }, ANIM_DURATION_MS);
   }
 }
 
@@ -44,104 +58,46 @@ function saveSession(username){ try{ localStorage.setItem("chat_user", username)
 function clearSession(){ try{ localStorage.removeItem("chat_user"); }catch(e){} }
 function loadSession(){ try{ return localStorage.getItem("chat_user"); }catch(e){ return null; } }
 
-/* init: restore session if present */
-window.addEventListener("DOMContentLoaded", () => {
-  const saved = loadSession();
-  const savedTarget = (() => { try { return localStorage.getItem(TARGET_KEY); } catch(e){ return null; } })();
-  if(savedTarget){
-    targetUser = savedTarget;
-    const tEl = $("targetUser");
-    if(tEl) tEl.value = targetUser;
+/* --- Big popup (THE AKAN) --- */
+function showBigPopup(text = 'THE AKAN') {
+  // If already present, update text and restart animation
+  const existing = document.querySelector('.big-popup');
+  if (existing) {
+    const lbl = existing.querySelector('.label');
+    if (lbl) lbl.textContent = text;
+    existing.classList.remove('show');
+    void existing.offsetWidth;
+    existing.classList.add('show');
+    return;
   }
 
-  if(saved){
-    currentUser = saved;
-    $("meLabel").textContent = currentUser;
-    animateShow("chat");
-    socket.emit("login", currentUser);
-    loadRecentMessages();
-  } else {
-    animateShow("auth");
-  }
+  const wrapper = document.createElement('div');
+  wrapper.className = 'big-popup';
+  wrapper.setAttribute('role', 'status');
+  wrapper.setAttribute('aria-live', 'polite');
 
-  // send on Enter
-  const msgInput = $("msgInput");
-  if(msgInput){
-    msgInput.addEventListener("keydown", (e) => {
-      if(e.key === "Enter" && !e.shiftKey){
-        e.preventDefault();
-        sendMsg();
-      }
-    });
-  }
-});
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.textContent = text;
 
-/* ---------- Auth ---------- */
-async function register(){
-  const username = $("regUser").value.trim();
-  const password = $("regPass").value;
-  if(!username || !password){ alert("Enter username and password"); return; }
-  const res = await fetch('/register', {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ username, password })
-  });
-  const data = await res.json();
-  if(data.error){ alert(data.error); return; }
+  wrapper.appendChild(label);
+  document.body.appendChild(wrapper);
 
-  currentUser = data.username;
-  saveSession(currentUser);
-  $("meLabel").textContent = currentUser;
-  socket.emit("login", currentUser);
-  animateShow("chat");
-  loadRecentMessages();
+  // trigger animation
+  requestAnimationFrame(() => wrapper.classList.add('show'));
+
+  // cleanup after animation finishes
+  setTimeout(() => {
+    if (wrapper.parentElement) wrapper.parentElement.removeChild(wrapper);
+  }, POPUP_DURATION_MS + 200);
 }
 
-async function login(){
-  const username = $("loginUser").value.trim();
-  const password = $("loginPass").value;
-  if(!username || !password){ alert("Enter username and password"); return; }
-  const res = await fetch('/login', {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ username, password })
-  });
-  const data = await res.json();
-  if(data.error){ alert(data.error); return; }
-  currentUser = data.username;
-  saveSession(currentUser);
-  $("meLabel").textContent = currentUser;
-  socket.emit("login", currentUser);
-  animateShow("chat");
-  loadRecentMessages();
-}
-
-/* ---------- Target & Messaging ---------- */
-function setTarget(){
-  const t = $("targetUser").value.trim();
-  if(!t){ alert("Enter target username"); return; }
-  targetUser = t;
-  try { localStorage.setItem(TARGET_KEY, targetUser); } catch(e){}
-  alert("Target set to: " + targetUser);
-}
-
-function sendMsg(){
-  if(!currentUser || !targetUser) { alert("Login and set target first"); return; }
-  const text = $("msgInput").value.trim();
-  if(!text) return;
-  socket.emit("privateMessage", { toUser: targetUser, fromUser: currentUser, type: "text", text });
-  $("msgInput").value = "";
-}
-
-/* ---------- Socket listener (single registration) ---------- */
-socket.on("chatMessage", msg => {
-  appendMessage(msg);
-});
-
-/* ---------- UI helpers ---------- */
+/* --- Message helpers (animated entrance + optional float) --- */
 function appendMessage(msg){
   const ul = $("messages");
   if(!ul) return;
+
   // optional dedupe: avoid exact duplicates (same user + text + url + ts)
-  // if msg has ts or id you can use that; here we do a simple check for last item equality
   const last = ul.lastElementChild;
   if(last){
     const lastText = last.getAttribute("data-signature");
@@ -156,16 +112,58 @@ function appendMessage(msg){
   if(msg.type === "photo"){
     li.innerHTML = `<strong>${escapeHtml(msg.user)}</strong><div><img src="${msg.url}" alt="photo"></div>`;
   } else if(msg.type === "file"){
-    li.innerHTML = `<strong>${escapeHtml(msg.user)}</strong><div><a href="${msg.url}" target="_blank">${escapeHtml(msg.original || 'file')}</a></div>`;
+    li.innerHTML = `<strong>${escapeHtml(msg.user)}</strong><div><a href="${msg.url}" target="_blank" rel="noopener">${escapeHtml(msg.original || 'file')}</a></div>`;
   } else if(msg.type === "voice"){
     li.innerHTML = `<strong>${escapeHtml(msg.user)}</strong><div><audio controls src="${msg.url}"></audio></div>`;
   } else {
+    // text message: use textContent to avoid injection
     li.textContent = `${msg.user}: ${msg.text}`;
   }
+
+  // add entrance animation class and remove it after ANIM_DURATION_MS
+  li.classList.add('msg-enter');
   ul.appendChild(li);
+  // remove entrance class after animation completes
+  setTimeout(()=> {
+    li.classList.remove('msg-enter');
+    // optional gentle float after entrance
+    li.classList.add('msg-float');
+  }, ANIM_DURATION_MS + 40);
+
   ul.scrollTop = ul.scrollHeight;
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* Append a plain text message (convenience) */
+function appendAnimatedMessage(text, type = 'self', floatAfter = true){
+  const ul = $("messages");
+  if(!ul) return;
+  const li = document.createElement('li');
+  li.className = `${type} msg-enter`;
+  li.textContent = text;
+  ul.appendChild(li);
+  setTimeout(()=> {
+    li.classList.remove('msg-enter');
+    if(floatAfter) li.classList.add('msg-float');
+  }, ANIM_DURATION_MS + 40);
+  ul.scrollTop = ul.scrollHeight;
+}
+
+/* Typing indicator helpers */
+function showTypingIndicator(){
+  const ul = $("messages");
+  if(!ul) return;
+  if(ul.querySelector('.typing')) return; // already shown
+  const li = document.createElement('li');
+  li.className = 'other typing-wrap';
+  li.innerHTML = `<div class="typing" id="typingIndicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>`;
+  ul.appendChild(li);
+  ul.scrollTop = ul.scrollHeight;
+}
+function hideTypingIndicator(){
+  const el = document.getElementById('typingIndicator');
+  if(el && el.parentElement) el.parentElement.remove();
+}
 
 /* ---------- Load recent messages ---------- */
 async function loadRecentMessages(limit = 50){
@@ -182,13 +180,19 @@ async function loadRecentMessages(limit = 50){
 
 /* ---------- Uploads & Voice ---------- */
 function choosePhoto(){ $("photoInput").click(); }
-$("photoInput").addEventListener("change", e => {
-  const f = e.target.files[0];
-  if(!f) return;
-  const reader = new FileReader();
-  reader.onload = ev => $("photoPreview").innerHTML = `<img src="${ev.target.result}">`;
-  reader.readAsDataURL(f);
-});
+const photoInputEl = $("photoInput");
+if(photoInputEl){
+  photoInputEl.addEventListener("change", e => {
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const preview = $("photoPreview");
+      if(preview) preview.innerHTML = `<img src="${ev.target.result}">`;
+    };
+    reader.readAsDataURL(f);
+  });
+}
 async function uploadPhoto(){
   if(!targetUser || !currentUser){ alert("Login and set target"); return; }
   const f = $("photoInput").files[0];
@@ -198,7 +202,8 @@ async function uploadPhoto(){
   const data = await res.json();
   if(data.url){
     socket.emit("privateMessage", { toUser: targetUser, fromUser: currentUser, type: "photo", url: data.url });
-    $("photoPreview").innerHTML = "";
+    const preview = $("photoPreview");
+    if(preview) preview.innerHTML = "";
   } else alert("Upload failed");
 }
 async function uploadFile(){
@@ -235,6 +240,72 @@ function stopRec(){
   };
 }
 
+/* ---------- Target & Messaging ---------- */
+function setTarget(){
+  const t = $("targetUser").value.trim();
+  if(!t){ alert("Enter target username"); return; }
+  targetUser = t;
+  try { localStorage.setItem(TARGET_KEY, targetUser); } catch(e){}
+  alert("Target set to: " + targetUser);
+}
+
+function sendMsg(){
+  if(!currentUser || !targetUser) { alert("Login and set target first"); return; }
+  const text = $("msgInput").value.trim();
+  if(!text) return;
+  socket.emit("privateMessage", { toUser: targetUser, fromUser: currentUser, type: "text", text });
+  $("msgInput").value = "";
+  // locally append for immediate feedback
+  appendAnimatedMessage(`${currentUser}: ${text}`, 'self');
+}
+
+/* ---------- Socket listener (single registration) ---------- */
+socket.on("chatMessage", msg => {
+  appendMessage(msg);
+});
+
+/* ---------- Auth ---------- */
+async function register(){
+  const username = $("regUser").value.trim();
+  const password = $("regPass").value;
+  if(!username || !password){ alert("Enter username and password"); return; }
+  const res = await fetch('/register', {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ username, password })
+  });
+  const data = await res.json();
+  if(data.error){ alert(data.error); return; }
+
+  currentUser = data.username;
+  saveSession(currentUser);
+  $("meLabel").textContent = currentUser;
+  socket.emit("login", currentUser);
+  // show THE AKAN popup
+  showBigPopup('THE AKAN');
+  animateShow("chat");
+  loadRecentMessages();
+}
+
+async function login(){
+  const username = $("loginUser").value.trim();
+  const password = $("loginPass").value;
+  if(!username || !password){ alert("Enter username and password"); return; }
+  const res = await fetch('/login', {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ username, password })
+  });
+  const data = await res.json();
+  if(data.error){ alert(data.error); return; }
+  currentUser = data.username;
+  saveSession(currentUser);
+  $("meLabel").textContent = currentUser;
+  socket.emit("login", currentUser);
+  // show THE AKAN popup
+  showBigPopup('THE AKAN');
+  animateShow("chat");
+  loadRecentMessages();
+}
+
 /* ---------- Logout ---------- */
 function logout(){
   currentUser = null;
@@ -242,6 +313,50 @@ function logout(){
   clearSession();
   try { localStorage.removeItem(TARGET_KEY); } catch(e){}
   animateShow("auth");
-  $("messages").innerHTML = "";
+  const msgs = $("messages");
+  if(msgs) msgs.innerHTML = "";
   socket.emit("logout");
 }
+
+/* ---------- Init: restore session if present ---------- */
+window.addEventListener("DOMContentLoaded", () => {
+  const saved = loadSession();
+  const savedTarget = (() => { try { return localStorage.getItem(TARGET_KEY); } catch(e){ return null; } })();
+  if(savedTarget){
+    targetUser = savedTarget;
+    const tEl = $("targetUser");
+    if(tEl) tEl.value = targetUser;
+  }
+
+  if(saved){
+    currentUser = saved;
+    const meLabel = $("meLabel");
+    if(meLabel) meLabel.textContent = currentUser;
+    animateShow("chat");
+    socket.emit("login", currentUser);
+    loadRecentMessages();
+  } else {
+    animateShow("auth");
+  }
+
+  // send on Enter
+  const msgInput = $("msgInput");
+  if(msgInput){
+    msgInput.addEventListener("keydown", (e) => {
+      if(e.key === "Enter" && !e.shiftKey){
+        e.preventDefault();
+        sendMsg();
+      }
+    });
+  }
+
+  // wire photo/file inputs safely if present (already handled above)
+});
+
+/* Expose some helpers to console for quick testing */
+window.showBigPopup = showBigPopup;
+window.appendAnimatedMessage = appendAnimatedMessage;
+window.showTypingIndicator = showTypingIndicator;
+window.hideTypingIndicator = hideTypingIndicator;
+window.setTarget = setTarget;
+window.logout = logout;
