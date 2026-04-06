@@ -1,4 +1,4 @@
-/* public/client.js — updated with popup + animation helpers */
+/* public/client.js — fixed: prevent duplicate messages, popup + animation helpers */
 
 /* --- Config / timing --- */
 const ANIM_DURATION_MS = 700;   // match CSS --anim-duration (700ms)
@@ -11,6 +11,12 @@ let recorder = null;
 let audioChunks = [];
 
 const TARGET_KEY = "chat_target";
+
+// track locally-sent message signatures to ignore server echoes
+const pendingLocalSigs = new Set();
+function makeSigFromText(user, type, textOrUrl){
+  return `${user}|${type}|${String(textOrUrl || "")}`;
+}
 
 /* small helpers */
 const $ = id => document.getElementById(id);
@@ -59,7 +65,7 @@ function clearSession(){ try{ localStorage.removeItem("chat_user"); }catch(e){} 
 function loadSession(){ try{ return localStorage.getItem("chat_user"); }catch(e){ return null; } }
 
 /* --- Big popup (THE AKAN) --- */
-function showBigPopup(text = 'THE AKAN') {
+function showBigPopup(text = 'THE AKAN.V3') {
   // If already present, update text and restart animation
   const existing = document.querySelector('.big-popup');
   if (existing) {
@@ -201,7 +207,12 @@ async function uploadPhoto(){
   const res = await fetch('/upload', { method: "POST", body: fd });
   const data = await res.json();
   if(data.url){
+    // emit and add pending signature so server echo is ignored
     socket.emit("privateMessage", { toUser: targetUser, fromUser: currentUser, type: "photo", url: data.url });
+    const sig = makeSigFromText(currentUser, "photo", data.url);
+    pendingLocalSigs.add(sig);
+    // append locally for immediate feedback
+    appendMessage({ user: currentUser, type: "photo", url: data.url });
     const preview = $("photoPreview");
     if(preview) preview.innerHTML = "";
   } else alert("Upload failed");
@@ -215,6 +226,9 @@ async function uploadFile(){
   const data = await res.json();
   if(data.url){
     socket.emit("privateMessage", { toUser: targetUser, fromUser: currentUser, type: "file", url: data.url, original: f.name });
+    const sig = makeSigFromText(currentUser, "file", data.url);
+    pendingLocalSigs.add(sig);
+    appendMessage({ user: currentUser, type: "file", url: data.url, original: f.name });
   } else alert("Upload failed");
 }
 async function startRec(){
@@ -236,6 +250,9 @@ function stopRec(){
     const data = await res.json();
     if(data.url){
       socket.emit("privateMessage", { toUser: targetUser, fromUser: currentUser, type: "voice", url: data.url });
+      const sig = makeSigFromText(currentUser, "voice", data.url);
+      pendingLocalSigs.add(sig);
+      appendMessage({ user: currentUser, type: "voice", url: data.url });
     } else alert("Voice upload failed");
   };
 }
@@ -253,15 +270,42 @@ function sendMsg(){
   if(!currentUser || !targetUser) { alert("Login and set target first"); return; }
   const text = $("msgInput").value.trim();
   if(!text) return;
+
+  // build signature and store it so we can ignore the server echo
+  const sig = makeSigFromText(currentUser, "text", text);
+  pendingLocalSigs.add(sig);
+
+  // emit to server
   socket.emit("privateMessage", { toUser: targetUser, fromUser: currentUser, type: "text", text });
+
+  // clear input and append locally for immediate feedback
   $("msgInput").value = "";
-  // locally append for immediate feedback
   appendAnimatedMessage(`${currentUser}: ${text}`, 'self');
 }
 
 /* ---------- Socket listener (single registration) ---------- */
 socket.on("chatMessage", msg => {
-  appendMessage(msg);
+  // normalize message fields (server may use user/from/fromUser)
+  const user = msg.user || msg.from || msg.fromUser || "";
+  const type = msg.type || "text";
+  const payload = msg.text || msg.url || msg.original || "";
+
+  const sig = makeSigFromText(user, type, payload);
+
+  // if this message matches a locally-sent signature, remove the pending flag and skip appending
+  if(pendingLocalSigs.has(sig)){
+    pendingLocalSigs.delete(sig);
+    return;
+  }
+
+  // otherwise render normally
+  appendMessage({
+    user,
+    type,
+    text: msg.text,
+    url: msg.url,
+    original: msg.original
+  });
 });
 
 /* ---------- Auth ---------- */
